@@ -36,18 +36,30 @@ All infrastructure provisioning and application deployments were initiated from 
 │       └── azure-aro-deploy.yaml         # AWS/EKS CI/CD deployment workflow (in development)
 │
 ├── scripts/
-│   ├── deploy-gke.sh                     # GKE application deployment orchestration
+│   ├── configure-moodle-aro.sh           # Configure Moodle on Azure Red Hat OpenShift
+│   ├── configure-moodle-gke.sh           # Configure Moodle on GKE
+│   ├── configure-moodle-openshift.sh     # Configure Moodle on OpenShift
+│   ├── deploy-aro.sh                     # Deploy Moodle workloads to ARO
+│   ├── deploy-gke.sh                     # Deploy Moodle workloads to GKE
 │   ├── deploy-infra.sh                   # Infrastructure deployment automation
+│   ├── pre-deploy-aro.sh                 # ARO pre-deployment preparation
 │   ├── destroy-all.sh                    # Environment teardown automation
-│   ├── verify-all.sh                     # Linux deployment validation
-│   └── verify-all-win.sh                 # Windows deployment validation
+│   ├── verify-all-win.sh                 # Windows deployment validation
+│   ├── verify-gcp.sh                     # GCP environment validation
+│   └── verify-openshift.sh               # OpenShift deployment validation
 │
 ├── docs/                                 # Engineering documentation
 │   ├── gcp_terraform_deploy.md           # GCP VM/infrastructure provisioning guide
 │   ├── p1_docker_deploy.md               # docker-compose deployment guide
 │   ├── p1_post_mortem.md                 # docker-compose troubleshooting notes
 │   ├── p2_k8_deploy.md                   # Kubernetes KinD deployment guide
-│   └── p2_post_mortem.md                 # Kubernetes troubleshooting notes
+│   ├── p2_post_mortem.md                 # Kubernetes KinD troubleshooting notes
+│   ├── p3_k8_deploy.md                   # Kubernetes GCP/GKE deployment guide
+│	├──	p3_post_mortem.md                 # Kubernetes GCP/GKE troubleshooting notes
+│   ├── p4_k8_deploy.md                   # Kubernetes Openshift Dev deployment guide
+│	├──	p4_post_mortem.md                 # Kubernetes Openshift Dev troubleshooting │notes
+│   ├── p5_k8_deploy.md                   # Kubernetes Azure/ARO deployment guide
+│	└── p5_post_mortem.md                 # Kubernetes Azure/ARO troubleshooting │notes
 │
 ├── docker/                               # docker-compose deployment
 │   ├── docker-compose.yml                # Moodle multi-container application stack
@@ -206,9 +218,9 @@ To keep the repository organized, deployment guides and troubleshooting notes ar
 * 📄 **[P1 Post-Mortem](./docs/p1_post_mortem.md)**
 * 📄 **[P2 Kubernetes Deployment Guide](./docs/p2_k8_deploy.md)**
 * 📄 **[P2 Kubernetes Post-Mortem](./docs/p2_post_mortem.md)**
-* 📄 **[P3 GKE Deployment Guide](./docs/p3_k8_deploy.md)**
-* 📄 **[P5 Azure ARO Deployment Guide](./docs/p5_k8_deploy.md)**
-* 📄 **[P5 Azure ARO Post-Mortem](./docs/p5_post_mortem.md)**
+* 📄 **[P3 GCP-GKE Deployment Guide](./docs/p3_k8_deploy.md)**
+* 📄 **[P5 Azure-ARO Deployment Guide](./docs/p5_k8_deploy.md)**
+* 📄 **[P5 Azure-ARO Post-Mortem](./docs/p5_post_mortem.md)**
 
 ---
 
