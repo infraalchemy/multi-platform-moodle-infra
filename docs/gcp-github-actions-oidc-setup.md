@@ -14,13 +14,13 @@ git remote get-url origin
 
 Expected:
 ```text
-https://github.com/infraalchemy/cloud-infra-single-node.git
+https://github.com/infraalchemy/multi-platform-moodle-infra.git
 ```
 
 Therefore:
 ```text
 GitHub owner: infraalchemy
-Repository: infraalchemy/cloud-infra-single-node
+Repository: infraalchemy/multi-platform-moodle-infra
 ```
 
 ## 2. Set the local variables
@@ -28,7 +28,7 @@ Repository: infraalchemy/cloud-infra-single-node
 ```bash
 PROJECT_ID="civic-champion-439320-a5"
 GITHUB_ORG="infraalchemy"
-REPO="infraalchemy/cloud-infra-single-node"
+REPO="infraalchemy/multi-platform-moodle-infra"
 
 SERVICE_ACCOUNT="github-actions"
 POOL="github"

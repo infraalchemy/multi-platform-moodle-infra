@@ -15,10 +15,10 @@ sudo systemctl start docker
 cd /opt
 
 # Fresh clone
-rm -rf cloud-infra-single-node
-git clone https://github.com/infraalchemy/cloud-infra-single-node.git
+rm -rf multi-platform-moodle-infra
+git clone https://github.com/infraalchemy/multi-platform-moodle-infra.git
 
-cd /opt/cloud-infra-single-node/docker
+cd /opt/multi-platform-moodle-infra/docker
 
 # Fetch secret from GCP
 MYSQL_ROOT_PASSWORD=$(gcloud secrets versions access latest \

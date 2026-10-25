@@ -4,7 +4,7 @@ Rather than using a pre-built Moodle image, the application is separated into Ng
 
 The same application architecture is progressively evolved across increasingly sophisticated deployment models:
 
-**Docker Compose on GCP → Local Multi-node KinD → Multi-node GKE → Openshift → ARO (planned)**
+**Docker Compose on GCP → Local Multi-node KinD → Multi-node GKE → Red Hat OpenShift → Azure Red Hat OpenShift (ARO)**
 
 Each phase builds on the previous implementation while introducing additional capabilities in orchestration, persistent state management, networking and ingress, infrastructure as code, cloud services, security, recovery validation, and deployment automation.
 
@@ -14,14 +14,14 @@ Each phase builds on the previous implementation while introducing additional ca
 
 All infrastructure provisioning and application deployments were initiated from a Windows workstation.
 
-- Workstation: Windows
+- Workstation: Windows 11
 - Local Linux environment: WSL2
 - Container runtime: Docker Desktop
 - Local Kubernetes: KinD
-- Cloud infrastructure: Google Cloud Platform (GCP)
-- Cloud Kubernetes: Google Kubernetes Engine (GKE)
+- Cloud infrastructure: Google Cloud Platform (GCP), Microsoft Azure
+- Cloud Kubernetes: Google Kubernetes Engine (GKE), Red Hat OpenShift Developer Sandbox, Azure Red Hat OpenShift (ARO)
 - Infrastructure as Code: Terraform
-
+- Container registries: Google Artifact Registry, Azure Container Registry (ACR)
 ---
 
 ## Repository Structure
@@ -33,7 +33,7 @@ All infrastructure provisioning and application deployments were initiated from 
 ├── .github/
 │   └── workflows/
 │       ├── gcp-gke-deploy.yaml           # GCP/GKE CI/CD deployment workflow
-│       └── azure-aro-deploy.yaml         # AWS/EKS CI/CD deployment workflow (in development)
+│       └── azure-aro-deploy.yaml         # Azure/ARO CI/CD deployment workflow (in development)
 │
 ├── scripts/
 │   ├── configure-moodle-aro.sh           # Configure Moodle on Azure Red Hat OpenShift
@@ -47,19 +47,21 @@ All infrastructure provisioning and application deployments were initiated from 
 │   ├── verify-all-win.sh                 # Windows deployment validation
 │   ├── verify-gcp.sh                     # GCP environment validation
 │   └── verify-openshift.sh               # OpenShift deployment validation
-│
+│ 
 ├── docs/                                 # Engineering documentation
-│   ├── gcp_terraform_deploy.md           # GCP VM/infrastructure provisioning guide
-│   ├── p1_docker_deploy.md               # docker-compose deployment guide
-│   ├── p1_post_mortem.md                 # docker-compose troubleshooting notes
-│   ├── p2_k8_deploy.md                   # Kubernetes KinD deployment guide
-│   ├── p2_post_mortem.md                 # Kubernetes KinD troubleshooting notes
-│   ├── p3_k8_deploy.md                   # Kubernetes GCP/GKE deployment guide
-│	├──	p3_post_mortem.md                 # Kubernetes GCP/GKE troubleshooting notes
-│   ├── p4_k8_deploy.md                   # Kubernetes Openshift Dev deployment guide
-│	├──	p4_post_mortem.md                 # Kubernetes Openshift Dev troubleshooting │notes
-│   ├── p5_k8_deploy.md                   # Kubernetes Azure/ARO deployment guide
-│	└── p5_post_mortem.md                 # Kubernetes Azure/ARO troubleshooting │notes
+│   ├── gcp_terraform_deploy.md           # GCP VM infrastructure provisioning
+│   ├── gcp-github-actions-oidc-setup.md  # GCP Workload Identity Federation and GitHub Actions
+│   ├── gke_pipeline_troubleshooting.md   # GKE CI/CD pipeline troubleshooting
+│   ├── p1_docker_deploy.md               # Phase 1: Docker Compose deployment
+│   ├── p1_post_mortem.md                 # Phase 1: Troubleshooting and lessons learned
+│   ├── p2_k8_deploy.md                   # Phase 2: Kubernetes KinD deployment
+│   ├── p2_post_mortem.md                 # Phase 2: Troubleshooting and lessons learned
+│   ├── p3_k8_deploy.md                   # Phase 3: GKE deployment
+│   ├── p4_k8_deploy.md                   # Phase 4: OpenShift Developer Sandbox (planned)
+│   ├── p4_post_mortem.md                 # Phase 4: Troubleshooting (planned)
+│   ├── p5_k8_deploy.md                   # Phase 5: Azure Red Hat OpenShift deployment
+│   ├── p5_post_mortem.md                 # Phase 5: Troubleshooting and lessons learned
+│   └── persistence-test.png              # Persistent storage validation screenshot
 │
 ├── docker/                               # docker-compose deployment
 │   ├── docker-compose.yml                # Moodle multi-container application stack

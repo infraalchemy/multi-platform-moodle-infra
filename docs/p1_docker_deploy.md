@@ -80,7 +80,7 @@ CONTAINER ID   IMAGE   COMMAND   CREATED   STATUS   PORTS   NAMES
 Clone the project repository:
 ```bash
 git clone <your-repository-url>
-cd cloud-infra-single-node/docker
+cd multi-platform-moodle-infra/docker
 ```
 
 Verify the Docker deployment structure:
