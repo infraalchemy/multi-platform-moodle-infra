@@ -49,6 +49,7 @@ All infrastructure provisioning and application deployments were initiated from 
 │   └── verify-openshift.sh               # OpenShift deployment validation
 │ 
 ├── docs/                                 # Engineering documentation
+│   ├── domain-setup.md                   # Custom domain, DNS, TLS certificates, and ARO Route configuration                     
 │   ├── gcp_terraform_deploy.md           # GCP VM infrastructure provisioning
 │   ├── gcp-github-actions-oidc-setup.md  # GCP Workload Identity Federation and GitHub Actions
 │   ├── gke_pipeline_troubleshooting.md   # GKE CI/CD pipeline troubleshooting
@@ -57,11 +58,10 @@ All infrastructure provisioning and application deployments were initiated from 
 │   ├── p2_k8_deploy.md                   # Phase 2: Kubernetes KinD deployment
 │   ├── p2_post_mortem.md                 # Phase 2: Troubleshooting and lessons learned
 │   ├── p3_k8_deploy.md                   # Phase 3: GKE deployment
-│   ├── p4_k8_deploy.md                   # Phase 4: OpenShift Developer Sandbox (planned)
-│   ├── p4_post_mortem.md                 # Phase 4: Troubleshooting (planned)
+│   ├── p4_k8_deploy.md                   # Phase 4: OpenShift Developer Sandbox
+│   ├── p4_post_mortem.md                 # Phase 4: Troubleshooting and lessons learned
 │   ├── p5_k8_deploy.md                   # Phase 5: Azure Red Hat OpenShift deployment
-│   ├── p5_post_mortem.md                 # Phase 5: Troubleshooting and lessons learned
-│   └── persistence-test.png              # Persistent storage validation screenshot
+│   └── p5_post_mortem.md                 # Phase 5: Troubleshooting and lessons learned│   
 │
 ├── docker/                               # docker-compose deployment
 │   ├── docker-compose.yml                # Moodle multi-container application stack
@@ -216,11 +216,16 @@ All infrastructure provisioning and application deployments were initiated from 
 To keep the repository organized, deployment guides and troubleshooting notes are maintained separately:
 
 * 📄 **[GCP Terraform Deployment Guide](./docs/gcp_terraform_deploy.md)**
+* 📄 **[GCP GitHub Actions OIDC Setup](./docs/gcp-github-actions-oidc-setup.md)**
+* 📄 **[GKE CI/CD Pipeline Troubleshooting](./docs/gke_pipeline_troubleshooting.md)**
+* 📄 **[Custom Domain and HTTPS Setup](./docs/domain-setup.md)**
 * 📄 **[P1 Docker Deployment Guide](./docs/p1_docker_deploy.md)**
 * 📄 **[P1 Post-Mortem](./docs/p1_post_mortem.md)**
 * 📄 **[P2 Kubernetes Deployment Guide](./docs/p2_k8_deploy.md)**
 * 📄 **[P2 Kubernetes Post-Mortem](./docs/p2_post_mortem.md)**
 * 📄 **[P3 GCP-GKE Deployment Guide](./docs/p3_k8_deploy.md)**
+* 📄 **[P4 OpenShift Deployment Guide](./docs/p4_k8_deploy.md)**
+* 📄 **[P4 OpenShift Post-Mortem](./docs/p4_post_mortem.md)**
 * 📄 **[P5 Azure-ARO Deployment Guide](./docs/p5_k8_deploy.md)**
 * 📄 **[P5 Azure-ARO Post-Mortem](./docs/p5_post_mortem.md)**
 
