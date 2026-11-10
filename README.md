@@ -61,7 +61,7 @@ All infrastructure provisioning and application deployments were initiated from 
 │   ├── p4_k8_deploy.md                   # Phase 4: OpenShift Developer Sandbox
 │   ├── p4_post_mortem.md                 # Phase 4: Troubleshooting and lessons learned
 │   ├── p5_k8_deploy.md                   # Phase 5: Azure Red Hat OpenShift deployment
-│   └── p5_post_mortem.md                 # Phase 5: Troubleshooting and lessons learned│   
+│   └── p5_post_mortem.md                 # Phase 5: Troubleshooting and lessons learned   
 │
 ├── docker/                               # docker-compose deployment
 │   ├── docker-compose.yml                # Moodle multi-container application stack
@@ -133,12 +133,12 @@ All infrastructure provisioning and application deployments were initiated from 
 │   │    │
 │   │    ├── storage/                     # Persistent Moodle storage for OpenShift
 │   │    │   ├── moodle-storage.yaml      # PVC leveraging OpenShift StorageClasses
-│   │    │   └── kustomization.yaml       # Storage component kustomization
+│   │    │   └── kustomization.yaml       # Kustomize configuration Storage component
 │   │    │
 │   │    ├── mysql/                       # MySQL database
 │   │    │   ├── deployment.yaml          # MySQL deployment
 │   │    │   ├── service.yaml             # Internal MySQL service
-│   │    │   └── kustomization.yaml       # MySQL component kustomization
+│   │    │   └── kustomization.yaml       # Kustomize configuration MySQL component
 │   │    │
 │   │    ├── php/                         # PHP-FPM Moodle application
 │   │    │   ├── deployment-patch.yaml    # Injects the ServiceAccountName to pass SCC rules
@@ -154,7 +154,7 @@ All infrastructure provisioning and application deployments were initiated from 
 │   │    │
 │   │    └── overlays/                    # Cluster-wide networking configuration
 │   │        ├── route.yaml               # OpenShift Route for external HTTPS access to Nginx
-│   │        └── kustomization.yaml       # Route component kustomizati
+│   │        └── kustomization.yaml       # Route component kustomization
 │   │
 │   └── azure-aro/                        # P5: Azure Red Hat OpenShift deployment
 │        ├── kustomization.yaml           # Base Kustomize configuration
@@ -162,7 +162,7 @@ All infrastructure provisioning and application deployments were initiated from 
 │        │
 │        ├── storage/                     # Persistent Moodle storage for OpenShift
 │        │   ├── moodle-storage.yaml      # Azure-backed persistent storage for Moodle and MySQL
-│        │   └── kustomization.yaml       # Storage component kustomization
+│        │   └── kustomization.yaml       # Kustomize configuration Storage component
 │        │ 
 │        ├── mysql/                       # MySQL database
 │        │   ├── deployment.yaml          # MySQL deployment
@@ -172,17 +172,17 @@ All infrastructure provisioning and application deployments were initiated from 
 │        ├── php/                         # PHP-FPM Moodle application
 │        │   ├── deployment.yaml          # PHP-FPM deployment and Moodle initialization
 │        │   ├── service.yaml             # Internal PHP-FPM service
-│        │   └── kustomization.yaml       # PHP component kustomization
+│        │   └── kustomization.yaml       # Kustomize configuration PHP component
 │        │
 │        ├── nginx/                       # Nginx reverse proxy
 │        │   ├── configmap.yaml           # Nginx configuration
 │        │   ├── deployment.yaml          # Nginx deployment
 │        │   ├── service.yaml             # Internal Nginx service
-│        │   └── kustomization.yaml       # Nginx component kustomization
+│        │   └── kustomization.yaml       # Kustomize configuration Nginx component
 │        │
 │        └── overlays/                    # ARO-specific configuration
 │            ├── route.yaml               # OpenShift Route for external HTTPS access to Nginx
-│            └── kustomization.yaml       # Route component kustomization
+│            └── kustomization.yaml       # Kustomize configuration Route component
 │
 ├── terraform/                            # Google Cloud and Azure infrastructure provisioning
 │   ├── docker-compose/                   # P1: GCP VM infrastructure for Docker Compose
@@ -235,7 +235,7 @@ To keep the repository organized, deployment guides and troubleshooting notes ar
 
 This project demonstrates the progressive design and evolution of a stateful application platform across containerized, Kubernetes, and cloud-native infrastructure.
 
-Rather than treating each environment as a separate deployment, the same Moodle application architecture is carried through every phase—from Docker Compose on a Google Cloud VM, to a customized multi-node KinD cluster, to a multi-node GKE platform, and ultimately to AWS/EKS. Each phase introduces additional infrastructure capabilities while preserving the application's core architecture and persistent data requirements.
+Rather than treating each environment as a separate deployment, the same Moodle application architecture is carried through every phase—from Docker Compose on a Google Cloud VM, to a customized multi-node KinD cluster, to a multi-node GKE platform, and ultimately to Azure Red Hat OpenShift (ARO). Each phase introduces additional infrastructure capabilities while preserving the application's core architecture and persistent data requirements.
 
 The project covers application decomposition, containerization, Kubernetes orchestration, persistent storage, networking and ingress, infrastructure as code, cloud services, identity and security, and CI/CD automation.
 
@@ -295,22 +295,17 @@ Terraform provisions the GKE and supporting Google Cloud infrastructure, while K
 ### Result
 Built, integrated, and validated an end-to-end multi-node GKE platform spanning application workloads, persistent storage, cloud networking, infrastructure automation, identity, security, and recovery:
 
-### Result
 
-Built and validated a complete stateful application stack on a multi-node Kubernetes cluster, including:
-
-* **Multi-node cluster architecture** – separate control-plane and worker nodes, with application workloads and the Ingress controller scheduled on the worker
-* **Custom application image deployment** – built the custom PHP-FPM 8.2 image with the required Moodle PHP extensions and loaded it directly into the KinD cluster for deployment
+* **Managed cloud cluster architecture** – provisioned a multi-node GKE cluster via Terraform with managed control plane and automated node lifecycle management
+* **Custom application image deployment** – built custom PHP-FPM 8.2 runtime images with required Moodle extensions, publishing them to Google Artifact Registry (GAR) for cluster pull
 * **Kubernetes workload decomposition** – Nginx, PHP-FPM, and MySQL implemented as independently managed Kubernetes workloads and services
 * **Persistent storage** – persistent volumes configured for Moodle application files, Moodle data, and the MySQL database
-* **MySQL persistence validation** – database state retained across MySQL pod deletion and recreation, confirming that application data was independent of the pod lifecycle
+* **MySQL persistence validation** – database state retained across MySQL pod deletion and recreation, confirming that application data   was independent of the pod lifecycle
 * **Application initialization** – init container prepares Moodle application files on persistent storage before runtime startup
 * **Configuration and secrets management** – Kubernetes ConfigMaps and Secrets separate application configuration and credentials from workloads
 * **Ingress and network routing** – external traffic routed through Kubernetes Ingress to Nginx and then internally to PHP-FPM
 * **Workload recovery validation** – pods deliberately recreated to confirm Kubernetes recovery behavior while maintaining application state
 * **End-to-end application validation** – verified web access, authentication, database connectivity, and persistent file uploads
-
-Phase 2 demonstrated that the architecture established with Docker Compose could be successfully decomposed into Kubernetes resources while maintaining application functionality and persistent state. It also established the Kubernetes architecture that would be carried forward into GKE in Phase 3.
 
 ### Engineering Outcome
 The result is more than a Moodle deployment. The same stateful application has been progressively engineered from Docker Compose, through a customized multi-node local Kubernetes cluster, and into an integrated cloud Kubernetes platform.
