@@ -83,8 +83,6 @@ fi
 
 echo -e "${BOLD_GREEN}=== Step 5: Create MySQL Secret ===${NC}"
 
-echo -e "${BOLD_GREEN}=== Step 5: Create MySQL Secret ===${NC}"
-
 oc create secret generic mysql-secret \
   --from-literal=root-password="$MYSQL_ROOT_PASSWORD" \
   --from-literal=mysql-database="moodle" \
