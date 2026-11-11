@@ -1,4 +1,4 @@
-name: Deploy Moodle to GKE
+name: Moodle GKE CI/CD Deployment
 
 on:
   workflow_dispatch:
