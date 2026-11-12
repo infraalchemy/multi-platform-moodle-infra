@@ -1,0 +1,37 @@
+name: Azure Login Credential Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-login:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build valid credentials JSON
+        id: credentials
+        env:
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AZURE_SP_SECRET }}
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          CREDS=$(jq -cn \
+            --arg clientId "$CLIENT_ID" \
+            --arg clientSecret "$CLIENT_SECRET" \
+            --arg subscriptionId "$SUBSCRIPTION_ID" \
+            --arg tenantId "$TENANT_ID" \
+            '{clientId:$clientId,clientSecret:$clientSecret,subscriptionId:$subscriptionId,tenantId:$tenantId}')
+
+          echo "::add-mask::$CREDS"
+          echo "creds=$CREDS" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ steps.credentials.outputs.creds }}
+
+      - name: Verify Login
+        run: az account show --output table
