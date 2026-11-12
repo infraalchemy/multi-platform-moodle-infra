@@ -98,7 +98,7 @@ jobs:
           test -n "$TF_VAR_aro_client_secret"
           echo "Terraform credentials are set."
 
-- name: Setup Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
