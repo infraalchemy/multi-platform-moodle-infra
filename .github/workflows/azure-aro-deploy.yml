@@ -98,28 +98,28 @@ jobs:
           test -n "$TF_VAR_aro_client_secret"
           echo "Terraform credentials are set."
 
-      - name: Setup Terraform
+- name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform init -input=false -no-color
-        working-directory: ./terraform
+        working-directory: ./terraform/azure-aro
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
-        working-directory: ./terraform
+        working-directory: ./terraform/azure-aro
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: ./terraform
+        working-directory: ./terraform/azure-aro
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-        working-directory: ./terraform
+        working-directory: ./terraform/azure-aro
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-        working-directory: ./terraform
+        working-directory: ./terraform/azure-aro
 
       - name: Verify ARO Cluster
         run: |
