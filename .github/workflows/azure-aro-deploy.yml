@@ -33,7 +33,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Azure credentials
+      - name: Build valid credentials JSON
         id: credentials
         env:
           CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -172,7 +172,8 @@ jobs:
       # ------------------------------------------
       # 2. Authenticate to Azure
       # ------------------------------------------
-      - name: Build Azure credentials
+
+      - name: Build valid credentials JSON
         id: credentials
         env:
           CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -289,7 +290,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Azure credentials
+      - name: Build valid credentials JSON
         id: credentials
         env:
           CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -365,7 +366,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Azure credentials
+      - name: Build valid credentials JSON
         id: credentials
         env:
           CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -496,7 +497,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Azure credentials
+      - name: Build valid credentials JSON
         id: credentials
         env:
           CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
