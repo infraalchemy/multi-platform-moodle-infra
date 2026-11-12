@@ -1,0 +1,497 @@
+name: Moodle ARO CI/CD Deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AZURE_RESOURCE_GROUP: "rg-moodle-aro"
+  AZURE_ARO_CLUSTER: "moodle-aro-cluster"
+  AZURE_ACR_NAME: "moodlearoregistry"
+  ACR_LOGIN_SERVER: "moodlearoregistry.azurecr.io"
+  TF_VAR_aro_client_id: "${{ secrets.AZURE_CLIENT_ID }}"
+  TF_VAR_aro_client_secret: "${{ secrets.AZURE_SP_SECRET }}"
+
+jobs:
+
+  # ==========================================
+  # JOB 1: INFRASTRUCTURE PROVISIONING
+  # ==========================================
+
+  deploy-infrastructure:
+    name: Provision Infrastructure & Deploy ARO
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    outputs:
+      aro_api_url: ${{ steps.aro-outputs.outputs.api_url }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_SP_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Set Active Subscription
+        run: |
+          az account set \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+          az account show \
+            --query "{Name:name, Subscription:id, Tenant:tenantId}" \
+            --output table
+
+      - name: Register ARO Resource Provider
+        run: |
+          STATE=$(az provider show \
+            --namespace Microsoft.RedHatOpenShift \
+            --query registrationState \
+            --output tsv)
+
+          echo "Current ARO provider state: $STATE"
+
+          if [ "$STATE" != "Registered" ]; then
+            az provider register \
+              --namespace Microsoft.RedHatOpenShift \
+              --wait
+          fi
+
+          STATE=$(az provider show \
+            --namespace Microsoft.RedHatOpenShift \
+            --query registrationState \
+            --output tsv)
+
+          if [ "$STATE" != "Registered" ]; then
+            echo "ERROR: ARO resource provider is not registered."
+            exit 1
+          fi
+
+          echo "ARO resource provider is registered."
+
+      - name: Verify Terraform Environment Variables
+        run: |
+          test -n "$TF_VAR_aro_client_id"
+          test -n "$TF_VAR_aro_client_secret"
+          echo "Terraform credentials are set."
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: ./terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        working-directory: ./terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./terraform
+
+      - name: Verify ARO Cluster
+        run: |
+          STATE=$(az aro show \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query provisioningState \
+            --output tsv)
+
+          echo "ARO provisioning state: $STATE"
+
+          if [ "$STATE" != "Succeeded" ]; then
+            echo "ERROR: ARO cluster provisioning was unsuccessful."
+            exit 1
+          fi
+
+      - name: Get ARO API Endpoint
+        id: aro-outputs
+        run: |
+          API_URL=$(az aro show \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query apiserverProfile.url \
+            --output tsv)
+
+          if [ -z "$API_URL" ]; then
+            echo "ERROR: Unable to retrieve ARO API endpoint."
+            exit 1
+          fi
+
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+
+
+  # ==========================================
+  # JOB 2: BUILD AND PUSH CONTAINER IMAGES
+  # ==========================================
+
+  build-and-push-images:
+    name: Build & Push Containers to ACR
+    needs: deploy-infrastructure
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # ------------------------------------------
+      # 1. Retrieve repository
+      # ------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------
+      # 2. Authenticate to Azure
+      # ------------------------------------------
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_SP_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      # ------------------------------------------
+      # 3. Select Azure subscription
+      # ------------------------------------------
+      - name: Set Active Subscription
+        run: |
+          az account set \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+      # ------------------------------------------
+      # 4. Authenticate Docker to ACR
+      # ------------------------------------------
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login \
+            --name "${{ env.AZURE_ACR_NAME }}"
+
+      # ------------------------------------------
+      # 5. Build custom PHP-FPM image
+      # ------------------------------------------
+      - name: Build Custom PHP-FPM Image
+        run: |
+          docker build \
+            --no-cache \
+            -t "${{ env.ACR_LOGIN_SERVER }}/custom-php:8.2" \
+            ./docker/php
+
+      # ------------------------------------------
+      # 6. Build Moodle initialization image
+      # ------------------------------------------
+      - name: Build Moodle Initialization Image
+        run: |
+          docker build \
+            --no-cache \
+            -t "${{ env.ACR_LOGIN_SERVER }}/moodle-init:8.2" \
+            ./kubernetes/azure-aro/images/moodle-init
+
+      # ------------------------------------------
+      # 7. Push PHP-FPM image
+      # ------------------------------------------
+      - name: Push Custom PHP-FPM Image
+        run: |
+          docker push \
+            "${{ env.ACR_LOGIN_SERVER }}/custom-php:8.2"
+
+      # ------------------------------------------
+      # 8. Push Moodle initialization image
+      # ------------------------------------------
+      - name: Push Moodle Initialization Image
+        run: |
+          docker push \
+            "${{ env.ACR_LOGIN_SERVER }}/moodle-init:8.2"
+
+      # ------------------------------------------
+      # 9. Verify ACR repositories
+      # ------------------------------------------
+      - name: Verify Images in ACR
+        run: |
+          echo "Checking ACR repositories..."
+
+          az acr repository list \
+            --name "${{ env.AZURE_ACR_NAME }}" \
+            --output table
+
+          echo "Verifying custom-php:8.2..."
+
+          az acr repository show-tags \
+            --name "${{ env.AZURE_ACR_NAME }}" \
+            --repository custom-php \
+            --output tsv | grep -Fx "8.2"
+
+          echo "Verifying moodle-init:8.2..."
+
+          az acr repository show-tags \
+            --name "${{ env.AZURE_ACR_NAME }}" \
+            --repository moodle-init \
+            --output tsv | grep -Fx "8.2"
+
+          echo "Both container images are available in ACR."
+
+
+  # ==========================================
+  # JOB 3: PREPARE OPENSHIFT ENVIRONMENT
+  # ==========================================
+
+  prepare-openshift:
+    name: Prepare OpenShift Secrets & Authentication
+    needs: [deploy-infrastructure, build-and-push-images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_SP_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Set Active Subscription
+        run: |
+          az account set \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+      - name: Install OpenShift CLI (oc)
+        uses: redhat-actions/oc-installer@v1
+        with:
+          version: 'latest'
+
+      - name: Run ARO Pre-Deployment
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MOODLE_DB_PASSWORD: ${{ secrets.MYSQL_MOODLE_PASSWORD }}
+          MOODLE_ADMIN_PASSWORD: ${{ secrets.MOODLE_ADMIN_PASSWORD }}
+          TF_VAR_aro_client_id: ${{ secrets.AZURE_CLIENT_ID }}
+          TF_VAR_aro_client_secret: ${{ secrets.AZURE_SP_SECRET }}
+        run: |
+          bash scripts/pre-deploy-aro.sh
+
+      - name: Verify OpenShift Preparation
+        run: |
+          echo "Verifying OpenShift secrets..."
+          oc get secret mysql-secret -n moodle
+          oc get secret php-secret -n moodle
+          oc get secret acr-pull-secret -n moodle
+
+          echo "Verifying service account..."
+          oc get serviceaccount moodle-aro-sa -n moodle
+
+          echo "Verifying ACR pull-secret linkage..."
+          oc get serviceaccount moodle-aro-sa \
+            -n moodle \
+            -o jsonpath='{.imagePullSecrets[*].name}' |
+            tr ' ' '\n' |
+            grep -qx 'acr-pull-secret'
+
+          echo "OpenShift preparation verified successfully."
+
+  # ==========================================
+  # JOB 4: DEPLOY OPENSHIFT WORKLOADS
+  # ==========================================
+
+  deploy-workloads:
+    name: Deploy Moodle Workloads to ARO
+    needs: prepare-openshift
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_SP_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Set Active Subscription
+        run: |
+          az account set \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+      - name: Install OpenShift CLI (oc)
+        uses: redhat-actions/oc-installer@v1
+        with:
+          version: 'latest'
+
+      - name: Retrieve ARO Credentials
+        id: aro-login
+        run: |
+          ARO_API_URL=$(az aro show \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query apiserverProfile.url \
+            --output tsv)
+
+          ARO_USER=$(az aro list-credentials \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query kubeadminUsername \
+            --output tsv)
+
+          ARO_PASSWORD=$(az aro list-credentials \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query kubeadminPassword \
+            --output tsv)
+
+          : "${ARO_API_URL:?ARO API URL retrieval failed}"
+          : "${ARO_USER:?ARO username retrieval failed}"
+          : "${ARO_PASSWORD:?ARO password retrieval failed}"
+
+          echo "::add-mask::$ARO_PASSWORD"
+
+          echo "api_url=$ARO_API_URL" >> "$GITHUB_OUTPUT"
+          echo "username=$ARO_USER" >> "$GITHUB_OUTPUT"
+          echo "password=$ARO_PASSWORD" >> "$GITHUB_OUTPUT"
+
+      - name: Login to OpenShift
+        env:
+          ARO_API_URL: ${{ steps.aro-login.outputs.api_url }}
+          ARO_USER: ${{ steps.aro-login.outputs.username }}
+          ARO_PASSWORD: ${{ steps.aro-login.outputs.password }}
+        run: |
+          oc login "$ARO_API_URL" \
+            -u "$ARO_USER" \
+            -p "$ARO_PASSWORD"
+
+          unset ARO_PASSWORD
+
+          oc whoami
+          oc project moodle
+
+      - name: Deploy Persistent Storage
+        run: |
+          oc apply -k kubernetes/azure-aro/storage
+
+      - name: Deploy MySQL Database
+        run: |
+          oc apply -k kubernetes/azure-aro/mysql
+
+      - name: Deploy PHP-FPM Application
+        run: |
+          oc apply -k kubernetes/azure-aro/php
+
+      - name: Deploy Nginx Web Server
+        run: |
+          oc apply -k kubernetes/azure-aro/nginx
+
+      - name: Deploy OpenShift Networking Overlay
+        run: |
+          oc apply -k kubernetes/azure-aro/overlays
+
+      - name: Display Deployment Resources
+        run: |
+          echo "Persistent Volume Claims:"
+          oc get pvc -n moodle
+
+          echo "Deployments:"
+          oc get deployments -n moodle
+
+          echo "Pods:"
+          oc get pods -n moodle
+
+          echo "Services:"
+          oc get services -n moodle
+
+          echo "Routes:"
+          oc get routes -n moodle
+
+
+  # ==========================================
+  # JOB 5: VERIFY AND CONFIGURE MOODLE
+  # ==========================================
+
+  verify-and-configure:
+    name: Verify OpenShift Deployment & Configure Moodle
+    needs: deploy-workloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_SP_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Set Active Subscription
+        run: |
+          az account set \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
+      - name: Install OpenShift CLI (oc)
+        uses: redhat-actions/oc-installer@v1
+        with:
+          version: 'latest'
+
+      - name: Authenticate to OpenShift
+        shell: bash
+        run: |
+          ARO_API_URL=$(az aro show \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query apiserverProfile.url \
+            --output tsv)
+
+          ARO_USER=$(az aro list-credentials \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query kubeadminUsername \
+            --output tsv)
+
+          ARO_PASSWORD=$(az aro list-credentials \
+            --name "${{ env.AZURE_ARO_CLUSTER }}" \
+            --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" \
+            --query kubeadminPassword \
+            --output tsv)
+
+          : "${ARO_API_URL:?ARO API URL retrieval failed}"
+          : "${ARO_USER:?ARO username retrieval failed}"
+          : "${ARO_PASSWORD:?ARO password retrieval failed}"
+
+          echo "::add-mask::$ARO_PASSWORD"
+
+          oc login "$ARO_API_URL" \
+            -u "$ARO_USER" \
+            -p "$ARO_PASSWORD"
+
+          unset ARO_PASSWORD
+
+          oc project moodle
+          oc whoami
+
+      - name: Verify OpenShift Deployment
+        run: |
+          bash scripts/verify-openshift.sh
+
+      - name: Configure Moodle for ARO
+        run: |
+          bash scripts/configure-moodle-aro.sh
+
+      - name: Display Final Deployment Status
+        run: |
+          echo "=== Moodle Deployment Status ==="
+
+          oc get deployments -n moodle
+          oc get pods -n moodle
+          oc get pvc -n moodle
+          oc get services -n moodle
+          oc get routes -n moodle
+
+          echo "Moodle deployment pipeline completed."
