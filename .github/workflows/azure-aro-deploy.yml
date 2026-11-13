@@ -163,15 +163,8 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      # ------------------------------------------
-      # 1. Retrieve repository
-      # ------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      # ------------------------------------------
-      # 2. Authenticate to Azure
-      # ------------------------------------------
 
       - name: Build valid credentials JSON
         id: credentials
@@ -196,25 +189,16 @@ jobs:
         with:
           creds: ${{ steps.credentials.outputs.creds }}
           
-      # ------------------------------------------
-      # 3. Select Azure subscription
-      # ------------------------------------------
       - name: Set Active Subscription
         run: |
           az account set \
             --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
 
-      # ------------------------------------------
-      # 4. Authenticate Docker to ACR
-      # ------------------------------------------
       - name: Log in to Azure Container Registry
         run: |
           az acr login \
             --name "${{ env.AZURE_ACR_NAME }}"
 
-      # ------------------------------------------
-      # 5. Build custom PHP-FPM image
-      # ------------------------------------------
       - name: Build Custom PHP-FPM Image
         run: |
           docker build \
@@ -222,9 +206,6 @@ jobs:
             -t "${{ env.ACR_LOGIN_SERVER }}/custom-php:8.2" \
             ./docker/php
 
-      # ------------------------------------------
-      # 6. Build Moodle initialization image
-      # ------------------------------------------
       - name: Build Moodle Initialization Image
         run: |
           docker build \
@@ -232,25 +213,16 @@ jobs:
             -t "${{ env.ACR_LOGIN_SERVER }}/moodle-init:8.2" \
             ./kubernetes/azure-aro/images/moodle-init
 
-      # ------------------------------------------
-      # 7. Push PHP-FPM image
-      # ------------------------------------------
       - name: Push Custom PHP-FPM Image
         run: |
           docker push \
             "${{ env.ACR_LOGIN_SERVER }}/custom-php:8.2"
 
-      # ------------------------------------------
-      # 8. Push Moodle initialization image
-      # ------------------------------------------
       - name: Push Moodle Initialization Image
         run: |
           docker push \
             "${{ env.ACR_LOGIN_SERVER }}/moodle-init:8.2"
 
-      # ------------------------------------------
-      # 9. Verify ACR repositories
-      # ------------------------------------------
       - name: Verify Images in ACR
         run: |
           echo "Checking ACR repositories..."
@@ -274,7 +246,6 @@ jobs:
             --output tsv | grep -Fx "8.2"
 
           echo "Both container images are available in ACR."
-
 
   # ==========================================
   # JOB 3: PREPARE OPENSHIFT ENVIRONMENT
@@ -481,7 +452,6 @@ jobs:
 
           echo "Routes:"
           oc get routes -n moodle
-
 
   # ==========================================
   # JOB 5: VERIFY AND CONFIGURE MOODLE
